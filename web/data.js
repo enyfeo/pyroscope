@@ -1,11 +1,8 @@
 import * as zarr from "zarrita";
 
-export const DEFAULT_SOURCE = "https://cemsdata.data.compute.cci2.ecmwf.int/fire_front_radar/pof.zarr";
-export const STOPS = [0, .001, .005, .01, .02, .05, .1, .2, 1];
-export const COLORS = [
-  [255, 245, 218], [252, 217, 184], [250, 176, 115],
-  [237, 185, 118], [226, 114, 38], [228, 131, 119],
-  [219, 110, 99], [199, 64, 61], [115, 9, 67],
+export const DEFAULT_SOURCE = "https://raw.githubusercontent.com/enyfeo/raw_pof_data/main/pof.zarr";
+const COLORS = [
+  [158, 171, 176], [237, 204, 0], [229, 125, 15], [226, 24, 25], [0, 0, 0],
 ];
 
 export function sourceURL(raw, pageProtocol = "https:") {
@@ -43,14 +40,9 @@ export function color(value, output, offset) {
     output.fill(0, offset, offset + 4);
     return;
   }
-  let stop = 1;
-  while (stop < STOPS.length - 1 && value > STOPS[stop]) stop++;
-  const fraction = (value - STOPS[stop - 1]) / (STOPS[stop] - STOPS[stop - 1]);
-  for (let channel = 0; channel < 3; channel++) {
-    output[offset + channel] = Math.floor(
-      COLORS[stop - 1][channel] + fraction * (COLORS[stop][channel] - COLORS[stop - 1][channel])
-    );
-  }
+  const band = Math.min(Math.floor(value * 800), 15);
+  const index = band === 0 ? 0 : band < 3 ? 1 : band < 9 ? 2 : band < 14 ? 3 : 4;
+  output.set(COLORS[index], offset);
   output[offset + 3] = 220;
 }
 

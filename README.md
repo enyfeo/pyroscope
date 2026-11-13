@@ -105,34 +105,25 @@ reintroduce legacy Helm deployment when refreshing template workflows.
    The workflow obtains the base path from Pages configuration, so assets and
    worker modules also work beneath the project path or a configured domain.
 
-**The live ECMWF store has not been verified from the development environment:
-its hostname could not be resolved.** The default HTTPS URL is a candidate,
-not a confirmed working endpoint:
+The page reads the public GitHub-hosted Zarr archive directly; it does not
+upload or copy the archive. Its metadata matches the viewer's Zarr v2 schema,
+and GitHub allows public cross-origin requests. No token or other credential
+is needed:
 
 ```
-https://cemsdata.data.compute.cci2.ecmwf.int/fire_front_radar/pof.zarr
+https://raw.githubusercontent.com/enyfeo/raw_pof_data/main/pof.zarr
 ```
 
-The original URL supplied was HTTP. GitHub Pages is HTTPS, so that HTTP URL
-cannot be used directly from Pages. The store must support HTTPS with a valid
-certificate and CORS for `https://fdg10371.github.io` (or `*` for public data).
-These headers must be present on **metadata and chunk responses**, including
-404s that indicate an absent chunk. No cookies or authentication are sent.
-If the store does not support these requirements, its operator must enable
-them, or you must use a proxy/backend or a different HTTPS object store.
-GitHub Pages settings cannot fix an HTTP-only or non-CORS data source.
-
-Check from a machine that can reach the store:
+The browser fetches metadata and only the forecast chunks needed for the
+selected view:
 
 ```sh
-curl -i -H 'Origin: https://fdg10371.github.io' \
-  'https://cemsdata.data.compute.cci2.ecmwf.int/fire_front_radar/pof.zarr/.zmetadata'
+curl -i 'https://raw.githubusercontent.com/enyfeo/raw_pof_data/main/pof.zarr/.zmetadata'
 ```
 
-Expect HTTP 200, Zarr JSON, and `Access-Control-Allow-Origin` matching the Pages
-origin or `*`. Repeat for a real chunk such as `MODEL_FIRE/0.0.0.0`, then
-confirm in the browser. Curl alone does not enforce CORS. Allow `GET`; if your
-hosting setup triggers a browser preflight, handle `OPTIONS` too.
+To use another public HTTPS source, set the Actions variable `POF_ZARR_URL` or
+use the source field in the page. Never put credentials in the URL or frontend
+configuration.
 
 ## Updates and refresh
 
@@ -174,7 +165,7 @@ PAGES_BASE_PATH=/pyroscope/ npm run preview
 ```
 
 `VITE_ZARR_URL` sets the build's default source. Leave it unset to use the
-candidate ECMWF HTTPS endpoint. Forecasts are not downloaded during the build.
+GitHub-hosted archive above. Forecasts are not downloaded during the build.
 
 ## Performance and data contract
 
@@ -216,12 +207,14 @@ McNorton, J. R., et al. (2024), *A Global Probability-of-Fire (PoF) Forecast*,
 Geophysical Research Letters, 51, e2023GL107929.
 https://doi.org/10.1029/2023GL107929
 
-Uses the supplied State of Wildfires May 2025 guidance: Work Sans, teal UI
-accents, and orange/red probability colours with hot pink at the upper endpoint.
-Piecewise-linear colour anchors: 0, 0.1, 0.5, 1, 2, 5, 10, 20, and 100 percent.
+The direct-Zarr viewer uses Work Sans and teal UI accents. Its probability
+palette has 16 equal bands from 0% to 2%: grey below 0.125%, yellow from
+0.125% to below 0.375%, orange from 0.375% to below 1.125%, red from 1.125%
+to below 1.75%, and black at 1.75% and above (including values above 2%).
 This is a numeric colour scale, **not an alert classification**. Transparent
-means no data; zero is pale cream. No official logo is recreated; approved
-logo assets are still needed. The supplied PDFs are not published.
+means no data. The optional Python backend retains its original colour scale.
+No official logo is recreated; approved logo assets are still needed. The
+supplied PDFs are not published.
 
 Leaflet, Work Sans Latin fonts, and a Natural Earth 1:110m basemap are bundled
 and self-hosted. There are no third-party map/font requests. The browser does

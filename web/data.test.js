@@ -30,9 +30,19 @@ test("nearest coordinates support both directions", () => {
   assert.equal(nearest([-75, -25, 25, 75], 30), 2);
 });
 test("numeric probability scale and no-data alpha", () => {
-  const output = new Uint8ClampedArray(12);
-  color(0, output, 0); color(NaN, output, 4); color(.05, output, 8);
-  assert.deepEqual([...output], [255, 245, 218, 220, 0, 0, 0, 0, 228, 131, 119, 220]);
+  const output = new Uint8ClampedArray(4);
+  const cases = [
+    [NaN, [0, 0, 0, 0]], [0, [158, 171, 176, 220]],
+    [.001249, [158, 171, 176, 220]], [.00125, [237, 204, 0, 220]],
+    [.003749, [237, 204, 0, 220]], [.00375, [229, 125, 15, 220]],
+    [.011249, [229, 125, 15, 220]], [.01125, [226, 24, 25, 220]],
+    [.017499, [226, 24, 25, 220]], [.0175, [0, 0, 0, 220]],
+    [.02, [0, 0, 0, 220]], [1, [0, 0, 0, 220]],
+  ];
+  for (const [value, expected] of cases) {
+    color(value, output, 0);
+    assert.deepEqual([...output], expected, `probability ${value}`);
+  }
   for (const value of [-.01, 1.01, Infinity]) assert.throws(() => probability(value));
   assert.equal(decodeTime(2n, { units: "days since 2026-10-27 00:00:00" }), "2026-10-29T00:00:00.000Z");
   assert.throws(() => decodeTime(-9223372036854775808n, { units: "days since 2024-01-01" }));
