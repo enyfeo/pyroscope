@@ -72,6 +72,9 @@ test("point and full tile sampling preserve zero and missing probabilities", asy
   assert.ok(tile.some((value, index) => index % 4 === 3 && value === 0));
   assert.ok(tile.some((value, index) => index % 4 === 3 && value === 220));
   await assert.rejects(dataset.point(100, 0, 0, 0), /out of range/);
+  assert.deepEqual(await dataset.series(0, -25, 0), { probabilities: [.05, .1], lat: -25, lon: 0 });
+  assert.deepEqual((await dataset.series(0, 75, 180)).probabilities, [null, null]);
+  await assert.rejects(dataset.series(100, 0, 0), /out of range/);
 });
 test("refresh reads updated metadata and chunks, without a stale browser cache", async () => {
   const before = new Dataset(url);

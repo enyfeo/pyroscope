@@ -144,7 +144,7 @@ function render() {
     status(`Forecast could not load: ${event.error.message} Use Connect / refresh data to retry.`, true);
   });
   thisLayer.on("load", () => {
-    if (layer === thisLayer && !failed) status("Forecast ready. Click the map for a grid-cell probability.");
+    if (layer === thisLayer && !failed) status("Forecast ready. Click the map for a grid-cell forecast time series.");
   });
   layer = thisLayer;
   status("Reading and decoding forecast chunks...");
@@ -209,15 +209,75 @@ async function initialize() {
     status(error.message, true);
   }
 }
+const percent = value => `${(value * 100).toLocaleString(undefined, { maximumFractionDigits: 3 })}%`;
+const shortDate = time => new Date(time).toLocaleDateString(undefined, { timeZone: "UTC", day: "numeric", month: "short" });
+function svg(name, attributes, text) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, value);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function seriesChart(series, validTimes, selected) {
+  const width = 320, height = 170, left = 46, right = 10, top = 12, bottom = 28;
+  const values = series.probabilities;
+  const peak = Math.max(...values.filter(value => value !== null), .0001);
+  const magnitude = 10 ** Math.floor(Math.log10(peak));
+  const maximum = [1, 2, 5, 10].map(factor => factor * magnitude).find(limit => limit >= peak);
+  const x = index => left + (values.length > 1 ? index / (values.length - 1) : .5) * (width - left - right);
+  const y = value => top + (1 - value / maximum) * (height - top - bottom);
+  const chart = svg("svg", { viewBox: `0 0 ${width} ${height}`, class: "series-chart", role: "img",
+    "aria-label": `Daily probability of fire at each forecast time: ${values.map((value, index) =>
+      `${formatTime(validTimes[index])} UTC ${value === null ? "no data" : percent(value)}`).join("; ")}.` });
+  for (const fraction of [0, .5, 1]) {
+    chart.append(svg("line", { x1: left, x2: width - right, y1: y(maximum * fraction), y2: y(maximum * fraction), class: "grid" }));
+    chart.append(svg("text", { x: left - 6, y: y(maximum * fraction) + 3, "text-anchor": "end" }, percent(maximum * fraction)));
+  }
+  for (const index of new Set([0, Math.floor((values.length - 1) / 2), values.length - 1])) {
+    const anchor = values.length > 1 && index === 0 ? "start" : index === values.length - 1 && index ? "end" : "middle";
+    chart.append(svg("text", { x: x(index), y: height - 8, "text-anchor": anchor }, shortDate(validTimes[index])));
+  }
+  chart.append(svg("line", { x1: x(selected), x2: x(selected), y1: top, y2: height - bottom, class: "selected" }));
+  let path = "";
+  values.forEach((value, index) => {
+    if (value === null) return;
+    path += `${index && values[index - 1] !== null ? "L" : "M"}${x(index)},${y(value)}`;
+  });
+  chart.append(svg("path", { d: path, class: "series" }));
+  values.forEach((value, index) => {
+    if (value === null) return;
+    const dot = svg("circle", { cx: x(index), cy: y(value), r: index === selected ? 4.5 : 3, class: "point" });
+    dot.append(svg("title", {}, `${formatTime(validTimes[index])} UTC: ${percent(value)}`));
+    chart.append(dot);
+  });
+  return chart;
+}
 map.on("click", async event => {
   if (!times.length || element("step").disabled) return;
   const requestId = ++pointRevision;
-  const popup = L.popup().setLatLng(event.latlng).setContent("Reading grid-cell probability...").openOn(map);
+  const selected = Number(element("step").value), validTimes = times;
+  const popup = L.popup({ minWidth: 320, maxWidth: 340 }).setLatLng(event.latlng)
+    .setContent("Reading forecast time series...").openOn(map);
   try {
-    const value = await call("point", currentRun, Number(element("step").value), event.latlng.lat, event.latlng.lng);
+    const series = await call("series", currentRun, event.latlng.lat, event.latlng.lng);
     if (requestId !== pointRevision) return;
     const content = document.createElement("div");
-    content.textContent = `${value.probability === null ? "No data" : `${(value.probability * 100).toLocaleString(undefined, { maximumFractionDigits: 3 })}% daily probability`} at grid centre ${value.lat.toFixed(3)}, ${value.lon.toFixed(3)}. Valid ${formatTime(times[Number(element("step").value)])} UTC.`;
+    content.className = "series-popup";
+    const heading = document.createElement("strong");
+    heading.textContent = `Grid centre ${series.lat.toFixed(3)}, ${series.lon.toFixed(3)}`;
+    const current = series.probabilities[selected];
+    const summary = document.createElement("p");
+    summary.textContent = `${current === null ? "No data" : `${percent(current)} daily probability`} on ${formatTime(validTimes[selected])} UTC.`;
+    content.append(heading, summary);
+    if (series.probabilities.every(value => value === null)) {
+      const empty = document.createElement("p");
+      empty.textContent = "No data at this grid cell for the selected forecast.";
+      content.append(empty);
+    } else {
+      content.append(seriesChart(series, validTimes, selected));
+      const note = document.createElement("p");
+      note.textContent = "Forecast evolution for the selected run. Gaps indicate no data.";
+      content.append(note);
+    }
     popup.setContent(content);
   } catch (error) {
     if (requestId !== pointRevision) return;

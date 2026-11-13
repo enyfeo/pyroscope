@@ -212,17 +212,33 @@ export class Dataset {
     return pending;
   }
 
-  async point(run, step, latitude, longitude) {
-    this.validateFrame(run, step);
+  gridCell(latitude, longitude) {
     if (!Number.isFinite(latitude) || Math.abs(latitude) > 90 || !Number.isFinite(longitude)) {
       throw new Error("Invalid point coordinates.");
     }
     const row = nearest(this.lat, latitude);
     const col = nearest(this.lon, ((longitude + 180) % 360 + 360) % 360 - 180);
+    return { row, col };
+  }
+
+  async cellValue(run, step, row, col) {
     const [, , height, width] = this.arrays.MODEL_FIRE.chunks;
     const chunk = await this.chunk(run, step, Math.floor(row / height), Math.floor(col / width));
-    const value = Number(chunk.data[(row % height) * chunk.stride[2] + (col % width) * chunk.stride[3]]);
-    return { probability: probability(value), lat: this.lat[row], lon: this.lon[col] };
+    return probability(Number(chunk.data[(row % height) * chunk.stride[2] + (col % width) * chunk.stride[3]]));
+  }
+
+  async point(run, step, latitude, longitude) {
+    this.validateFrame(run, step);
+    const { row, col } = this.gridCell(latitude, longitude);
+    return { probability: await this.cellValue(run, step, row, col), lat: this.lat[row], lon: this.lon[col] };
+  }
+
+  async series(run, latitude, longitude) {
+    this.validateFrame(run, 0);
+    const { row, col } = this.gridCell(latitude, longitude);
+    const steps = Array.from({ length: this.arrays.MODEL_FIRE.shape[1] }, (_, step) => step);
+    const probabilities = await Promise.all(steps.map(step => this.cellValue(run, step, row, col)));
+    return { probabilities, lat: this.lat[row], lon: this.lon[col] };
   }
 
   async tile(run, step, z, x, y) {

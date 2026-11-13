@@ -191,6 +191,12 @@ identical pending chunk requests are shared. The UI remains on the main thread.
 Mobile memory and bandwidth may constrain global playback. Playback waits for
 visible tiles, and source values are nearest-neighbour sampled, not smoothed.
 
+Clicking the map opens a time-series chart of the nearest grid cell's
+probability at every forecast time in the selected run. The chart reads the
+spatial chunk containing that cell for each forecast step (about 1.6 MB
+uncompressed per step); already cached chunks are reused. Its y-axis scales to
+the plotted values, and missing values appear as gaps.
+
 Web Mercator displays approximately +/-85.05 degrees. Grid-cell probabilities
 are not changed by reprojection. Dates and units remain visible during playback.
 
