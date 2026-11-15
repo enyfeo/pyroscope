@@ -11,12 +11,18 @@ const element = id => document.getElementById(id);
 let worker, layer, timer, times = [], currentRun, revision = 0, pointRevision = 0, token = 0, older = 0;
 let sequence = 0;
 const pending = new Map();
-const status = (message, error = false) => {
+const status = (message, error = false, loading = false) => {
   element("status").textContent = message;
   element("status").classList.toggle("error", error);
+  element("map-status-text").textContent = message;
+  element("map-status").classList.toggle("error", error);
+  element("map-status").classList.toggle("loading", loading);
+  element("map-status").classList.toggle("ready", !error && !loading);
+  if (error) console.error(`PyroScope: ${message}`);
 };
 const controls = disabled => {
   for (const id of ["run", "step", "play", "previous", "next"]) element(id).disabled = disabled;
+  for (const button of element("timeline-steps").querySelectorAll("button")) button.disabled = disabled;
 };
 const formatTime = time => new Date(time).toLocaleString(undefined, {
   timeZone: "UTC", year: "numeric", month: "short", day: "numeric",
@@ -33,6 +39,49 @@ function stop() {
   clearInterval(timer);
   timer = null;
   element("play").textContent = "Play forecast";
+  element("play").setAttribute("aria-label", "Play forecast");
+  element("play").classList.remove("playing");
+}
+function updateTimeline() {
+  const selected = Number(element("step").value);
+  element("previous").disabled = element("step").disabled || selected <= 0;
+  element("next").disabled = element("step").disabled || selected >= times.length - 1;
+  element("play").disabled = element("step").disabled || times.length < 2;
+  element("timeline-issued").textContent = element("run").selectedOptions[0]?.textContent || "Awaiting data";
+}
+function updateTimelineSteps() {
+  const container = element("timeline-steps");
+  const scrollLeft = container.scrollLeft;
+  container.replaceChildren();
+  times.forEach((time, index) => {
+    const button = document.createElement("button");
+    const date = new Date(time).toLocaleDateString(undefined, {
+      timeZone: "UTC", month: "short", day: "numeric",
+    });
+    button.type = "button";
+    button.className = "timeline-stop";
+    button.textContent = date;
+    button.title = `${formatTime(time)} UTC`;
+    button.setAttribute("aria-label", `Show forecast valid at ${formatTime(time)} UTC`);
+    button.setAttribute("aria-pressed", String(index === Number(element("step").value)));
+    if (index === Number(element("step").value)) button.classList.add("selected");
+    button.disabled = element("step").disabled;
+    button.addEventListener("click", () => {
+      stop();
+      element("step").value = index;
+      render();
+    });
+    container.append(button);
+  });
+  container.scrollLeft = scrollLeft;
+  const selected = container.querySelector(".selected");
+  if (selected) {
+    const viewport = container.getBoundingClientRect();
+    const selectedBounds = selected.getBoundingClientRect();
+    if (selectedBounds.left < viewport.left) container.scrollLeft -= viewport.left - selectedBounds.left;
+    else if (selectedBounds.right > viewport.right) container.scrollLeft += selectedBounds.right - viewport.right;
+  }
+  updateTimeline();
 }
 function resetWorker() {
   worker?.terminate();
@@ -52,7 +101,8 @@ function resetWorker() {
     pending.clear();
     stop();
     controls(true);
-    status(error.message, true);
+    console.error(error);
+    status("Forecast worker stopped unexpectedly. Refresh the data connection to retry.", true);
   };
 }
 const map = L.map("map", { maxZoom: 10, minZoom: 1 }).setView([15, 5], 2);
@@ -101,7 +151,8 @@ async function loadBasemap() {
     attribution: '<a href="https://www.naturalearthdata.com/">Natural Earth</a> (public domain)',
   }).addTo(map);
  } catch (error) {
-   status(`Basemap unavailable: ${error.message}`, true);
+   console.error("Basemap unavailable:", error);
+   status("Basemap could not be loaded.", true);
  }
 }
 loadBasemap();
@@ -128,10 +179,13 @@ function clearForecast() {
   if (layer) { map.removeLayer(layer); layer = null; }
 }
 function render() {
+  if (!times.length) return;
   clearForecast();
-  const label = `${formatTime(times[Number(element("step").value)])} UTC`;
+  const selected = Number(element("step").value);
+  const label = `${formatTime(times[selected])} UTC`;
   element("valid").textContent = label;
   element("map-date").textContent = label;
+  updateTimelineSteps();
   const thisLayer = new ProbabilityLayer({
     opacity: Number(element("opacity").value) / 100, maxZoom: 10,
     bounds: [[-85.051129, -180], [85.051129, 180]], keepBuffer: 0,
@@ -141,13 +195,14 @@ function render() {
     if (layer !== thisLayer) return;
     failed = true;
     stop();
-    status(`Forecast could not load: ${event.error.message} Use Connect / refresh data to retry.`, true);
+    console.error("Forecast tile could not load:", event.error);
+    status("Forecast data could not be loaded. Check the connection and use Settings & info to retry.", true);
   });
   thisLayer.on("load", () => {
-    if (layer === thisLayer && !failed) status("Forecast ready. Click the map for a grid-cell forecast time series.");
+    if (layer === thisLayer && !failed) status("Forecast ready. Select a map cell to inspect its time series.");
   });
   layer = thisLayer;
-  status("Reading and decoding forecast chunks...");
+  status("Loading forecast data...", false, true);
   layer.addTo(map);
 }
 async function selectRun() {
@@ -156,8 +211,10 @@ async function selectRun() {
   controls(true);
   clearForecast();
   times = [];
+  updateTimelineSteps();
   element("valid").textContent = "Loading forecast...";
   element("map-date").textContent = "";
+  element("timeline-issued").textContent = element("run").selectedOptions[0]?.textContent || "Loading...";
   const selected = Number(element("run").value);
   try {
     const forecast = await call("forecast", selected);
@@ -168,12 +225,15 @@ async function selectRun() {
     element("step").max = times.length - 1;
     element("step").value = 0;
     controls(false);
+    updateTimelineSteps();
     element("older").disabled = older === 0;
     render();
   } catch (error) {
     if (version !== revision) return;
-    status(error.message, true);
+    console.error("Forecast times could not be read:", error);
+    status("Forecast times could not be loaded. Check the data connection and try again.", true);
     element("run").disabled = false;
+    updateTimelineSteps();
   }
 }
 function appendRuns(catalog) {
@@ -182,6 +242,7 @@ function appendRuns(catalog) {
   element("run").append(...options);
   element("older").disabled = older === 0;
   element("older").textContent = older ? `Load older runs (${older} remaining)` : "All runs loaded";
+  updateTimeline();
 }
 async function initialize() {
   const version = ++revision;
@@ -190,11 +251,14 @@ async function initialize() {
   element("older").disabled = true;
   clearForecast();
   times = [];
+  updateTimelineSteps();
   element("valid").textContent = "Awaiting data";
   element("map-date").textContent = "";
+  element("timeline-issued").textContent = "Awaiting data";
+  element("connection").textContent = "";
   element("run").replaceChildren(new Option("Connecting...", ""));
   resetWorker();
-  status("Checking direct Zarr access and reading fresh metadata...");
+  status("Connecting to forecast data...", false, true);
   try {
     const source = sourceURL(element("source").value, location.protocol);
     const catalog = await call("open", source);
@@ -202,11 +266,12 @@ async function initialize() {
     element("run").replaceChildren();
     appendRuns(catalog);
     if (!catalog.runs.length) throw new Error("No forecast runs available.");
-    element("connection").textContent = `Connected directly to Zarr. Metadata read ${new Date().toLocaleTimeString()}. Refresh to discover updates.`;
+    element("connection").textContent = "Connected to the forecast data source.";
     await selectRun();
   } catch (error) {
     if (version !== revision) return;
-    status(error.message, true);
+    console.error("Forecast data connection failed:", error);
+    status("Could not connect to forecast data. Check the source URL or retry the connection.", true);
   }
 }
 const percent = value => `${(value * 100).toLocaleString(undefined, { maximumFractionDigits: 3 })}%`;
@@ -282,23 +347,39 @@ map.on("click", async event => {
   } catch (error) {
     if (requestId !== pointRevision) return;
     const content = document.createElement("div");
-    content.textContent = error.message;
+    content.textContent = "Could not load the forecast time series for this cell.";
     popup.setContent(content);
-    status(error.message, true);
+    console.error("Grid-cell forecast series could not be loaded:", error);
+    status("Could not load grid-cell forecast data.", true);
   }
 });
 element("run").addEventListener("change", selectRun);
 element("step").addEventListener("input", () => { stop(); render(); });
-element("opacity").addEventListener("input", () => layer?.setOpacity(Number(element("opacity").value) / 100));
+element("opacity").addEventListener("input", () => {
+  const opacity = Number(element("opacity").value);
+  element("opacity-value").textContent = `${opacity}%`;
+  layer?.setOpacity(opacity / 100);
+});
 function advance(delta) {
-  element("step").value = (Number(element("step").value) + delta + times.length) % times.length;
+  const current = Number(element("step").value);
+  const next = current + delta;
+  if (next < 0 || next >= times.length) {
+    if (delta > 0) stop();
+    return;
+  }
+  element("step").value = next;
   render();
+  if (delta > 0 && next === times.length - 1) stop();
 }
 element("previous").addEventListener("click", () => { stop(); advance(-1); });
 element("next").addEventListener("click", () => { stop(); advance(1); });
 element("play").addEventListener("click", () => {
   if (timer) { stop(); return; }
+  if (Number(element("step").value) >= times.length - 1) element("step").value = 0;
+  render();
   element("play").textContent = "Pause forecast";
+  element("play").setAttribute("aria-label", "Pause forecast");
+  element("play").classList.add("playing");
   timer = setInterval(() => { if (!layer?.isLoading()) advance(1); }, 1400);
 });
 element("older").addEventListener("click", async () => {
@@ -309,10 +390,12 @@ element("older").addEventListener("click", async () => {
     if (version === revision) appendRuns(catalog);
   } catch (error) {
     if (version !== revision) return;
-    status(error.message, true);
+    console.error("Older forecast runs could not be loaded:", error);
+    status("Could not load older forecast runs. Check the connection and retry.", true);
     element("older").disabled = false;
   }
 });
 element("source").value = import.meta.env.VITE_ZARR_URL || DEFAULT_SOURCE;
 element("source-form").addEventListener("submit", event => { event.preventDefault(); initialize(); });
+if (matchMedia("(max-width: 640px)").matches) element("legend").open = false;
 initialize();

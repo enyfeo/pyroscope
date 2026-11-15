@@ -2,7 +2,7 @@ import * as zarr from "zarrita";
 
 export const DEFAULT_SOURCE = "https://raw.githubusercontent.com/enyfeo/raw_pof_data/main/pof.zarr";
 const COLORS = [
-  [245, 241, 222], [241, 213, 107], [233, 150, 67], [201, 75, 66], [113, 61, 131],
+  [245, 241, 222], [168, 197, 160], [241, 213, 107], [233, 150, 67], [201, 75, 66], [113, 61, 131],
 ];
 
 export function sourceURL(raw, pageProtocol = "https:") {
@@ -41,7 +41,7 @@ export function color(value, output, offset) {
     return;
   }
   const band = Math.min(Math.floor(value * 800), 15);
-  const index = band === 0 ? 0 : band < 3 ? 1 : band < 9 ? 2 : band < 14 ? 3 : 4;
+  const index = band === 0 ? 0 : band < 3 ? 1 : band < 9 ? 2 : band < 14 ? 3 : value > .03 ? 5 : 4;
   output.set(COLORS[index], offset);
   output[offset + 3] = 220;
 }

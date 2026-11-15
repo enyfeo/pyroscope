@@ -14,20 +14,10 @@
         <span class="brand-copy"><strong>PyroScope</strong><small>Global Fire Forecast</small></span>
       </a>
       <section class="forecast-controls" aria-label="Forecast controls">
-        <label class="control-group run-control" for="run">
-          <span>Forecast issued</span>
+        <label class="control-group run-control" for="run" title="The UTC time when this forecast was generated.">
+          <span>Forecast issued (UTC)</span>
           <select id="run" disabled><option>Awaiting connection...</option></select>
         </label>
-        <div class="control-group valid-control">
-          <span>Valid time (UTC)</span>
-          <output id="valid" for="step">Awaiting data</output>
-        </div>
-        <input id="step" type="range" min="0" max="0" value="0" disabled aria-label="Forecast time step">
-        <div class="playback">
-          <button id="previous" aria-label="Previous forecast step" disabled>&larr;</button>
-          <button id="play" disabled>Play forecast</button>
-          <button id="next" aria-label="Next forecast step" disabled>&rarr;</button>
-        </div>
       </section>
       <details class="utility-menu">
         <summary aria-label="Data and information">Settings &amp; info</summary>
@@ -38,8 +28,8 @@
             <button type="submit">Connect / refresh data</button>
           </form>
           <button id="older" disabled>Load older runs</button>
-          <label for="opacity">Layer opacity</label>
-          <input id="opacity" type="range" min="0" max="100" value="85">
+          <label for="opacity">Layer opacity <output id="opacity-value" for="opacity">85%</output></label>
+          <input id="opacity" type="range" min="0" max="100" value="85" title="Adjust the transparency of forecast colours.">
           <p id="status" role="status" aria-live="polite">Connecting to the data store...</p>
           <p id="connection" class="hint"></p>
           <section id="about">
@@ -55,17 +45,37 @@
     <section class="map-area" aria-label="Probability of fire map">
       <div id="map"></div>
       <div class="map-caption"><span class="dot"></span> MODEL_FIRE <span id="map-date"></span></div>
-      <section class="legend" aria-label="Probability legend">
-        <h3>Daily probability of fire</h3>
+      <p id="map-status" role="status" aria-live="polite" class="map-status loading"><span class="status-spinner" aria-hidden="true"></span><span id="map-status-text">Connecting to forecast data...</span></p>
+      <section class="timeline" aria-label="Forecast timeline">
+        <div class="timeline-heading">
+          <div class="timeline-date">
+            <span>Valid time (UTC)</span>
+            <output id="valid" for="step">Awaiting data</output>
+          </div>
+          <div class="timeline-issued">Issued <output id="timeline-issued">Awaiting data</output> UTC</div>
+          <div class="playback">
+            <button id="previous" aria-label="Previous forecast step" title="Previous available forecast step" disabled>&larr;</button>
+            <button id="play" aria-label="Play forecast" title="Play forecast steps" disabled>Play forecast</button>
+            <button id="next" aria-label="Next forecast step" title="Next available forecast step" disabled>&rarr;</button>
+          </div>
+        </div>
+        <input id="step" type="range" min="0" max="0" step="1" value="0" disabled aria-label="Select forecast valid time">
+        <div id="timeline-steps" class="timeline-steps" role="group" aria-label="Available forecast steps"></div>
+      </section>
+      <details id="legend" class="legend" aria-label="Probability legend" open>
+        <summary><h3>Daily probability of fire</h3></summary>
+        <button class="legend-info" type="button" aria-label="About Probability of Fire" title="Daily probability of at least one MODIS active-fire detection within an approximately 9 × 9 km grid cell; not burned area or fire intensity." data-tooltip="Probability of at least one MODIS active-fire detection per grid cell and forecast day—not burned area or fire intensity.">i</button>
         <div class="swatches">
           <span style="--color:#F5F1DE">0–&lt;0.125%</span>
-          <span style="--color:#F1D56B">0.125–&lt;0.375%</span>
-          <span style="--color:#E99643">0.375–&lt;1.125%</span>
-          <span style="--color:#C94B42">1.125–&lt;1.75%</span>
-          <span style="--color:#713D83">≥1.75%</span>
+          <span style="--color:#A8C5A0">0.125–&lt;0.375%</span>
+          <span style="--color:#F1D56B">0.375–&lt;1.125%</span>
+          <span style="--color:#E99643">1.125–&lt;1.75%</span>
+          <span style="--color:#C94B42">1.75–3%</span>
+          <span style="--color:#713D83">&gt;3%</span>
         </div>
         <p>Discrete probability bands. Transparent = no data.</p>
-      </section>
+        <p class="legend-units">Probability (%)</p>
+      </details>
     </section>
   </main>
 </body>
