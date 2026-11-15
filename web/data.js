@@ -2,7 +2,7 @@ import * as zarr from "zarrita";
 
 export const DEFAULT_SOURCE = "https://raw.githubusercontent.com/enyfeo/raw_pof_data/main/pof.zarr";
 const COLORS = [
-  [158, 171, 176], [237, 204, 0], [229, 125, 15], [226, 24, 25], [0, 0, 0],
+  [245, 241, 222], [241, 213, 107], [233, 150, 67], [201, 75, 66], [113, 61, 131],
 ];
 
 export function sourceURL(raw, pageProtocol = "https:") {
