@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Pyroscope | Probability of Fire</title>
   <script type="module" src="/web/main.js"></script>
 </head>
@@ -30,7 +30,7 @@
           <button id="older" disabled>Load older runs</button>
           <label for="opacity">Layer opacity <output id="opacity-value" for="opacity">85%</output></label>
           <input id="opacity" type="range" min="0" max="100" value="85" title="Adjust the transparency of forecast colours.">
-          <p id="status" role="status" aria-live="polite">Connecting to the data store...</p>
+          <p id="status" aria-live="off">Connecting to the data store...</p>
           <p id="connection" class="hint"></p>
           <section id="about">
             <h3>What does PoF mean?</h3>

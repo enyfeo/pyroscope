@@ -9,6 +9,7 @@ import { DEFAULT_SOURCE, sourceURL } from "./data.js";
 const L = window.L;
 const element = id => document.getElementById(id);
 let worker, layer, timer, times = [], currentRun, revision = 0, pointRevision = 0, token = 0, older = 0;
+let selectedTimelineStep = -1;
 let sequence = 0;
 const pending = new Map();
 const status = (message, error = false, loading = false) => {
@@ -40,6 +41,7 @@ function stop() {
   timer = null;
   element("play").textContent = "Play forecast";
   element("play").setAttribute("aria-label", "Play forecast");
+  element("play").title = "Play forecast steps";
   element("play").classList.remove("playing");
 }
 function updateTimeline() {
@@ -51,7 +53,6 @@ function updateTimeline() {
 }
 function updateTimelineSteps() {
   const container = element("timeline-steps");
-  const scrollLeft = container.scrollLeft;
   container.replaceChildren();
   times.forEach((time, index) => {
     const button = document.createElement("button");
@@ -63,8 +64,6 @@ function updateTimelineSteps() {
     button.textContent = date;
     button.title = `${formatTime(time)} UTC`;
     button.setAttribute("aria-label", `Show forecast valid at ${formatTime(time)} UTC`);
-    button.setAttribute("aria-pressed", String(index === Number(element("step").value)));
-    if (index === Number(element("step").value)) button.classList.add("selected");
     button.disabled = element("step").disabled;
     button.addEventListener("click", () => {
       stop();
@@ -73,13 +72,31 @@ function updateTimelineSteps() {
     });
     container.append(button);
   });
-  container.scrollLeft = scrollLeft;
-  const selected = container.querySelector(".selected");
+  selectedTimelineStep = -1;
+  updateTimelineSelection();
+}
+function updateTimelineSelection() {
+  const container = element("timeline-steps");
+  const selectedIndex = Number(element("step").value);
+  if (selectedTimelineStep !== selectedIndex) {
+    const previous = container.children[selectedTimelineStep];
+    if (previous) {
+      previous.classList.remove("selected");
+      previous.setAttribute("aria-pressed", "false");
+    }
+    const selected = container.children[selectedIndex];
+    if (selected) {
+      selected.classList.add("selected");
+      selected.setAttribute("aria-pressed", "true");
+    }
+    selectedTimelineStep = selectedIndex;
+  }
+  const selected = container.children[selectedIndex];
   if (selected) {
-    const viewport = container.getBoundingClientRect();
-    const selectedBounds = selected.getBoundingClientRect();
-    if (selectedBounds.left < viewport.left) container.scrollLeft -= viewport.left - selectedBounds.left;
-    else if (selectedBounds.right > viewport.right) container.scrollLeft += selectedBounds.right - viewport.right;
+    if (selected.offsetLeft < container.scrollLeft) container.scrollLeft = selected.offsetLeft;
+    else if (selected.offsetLeft + selected.offsetWidth > container.scrollLeft + container.clientWidth) {
+      container.scrollLeft = selected.offsetLeft + selected.offsetWidth - container.clientWidth;
+    }
   }
   updateTimeline();
 }
@@ -115,7 +132,7 @@ const BaseMapLayer = L.GridLayer.extend({
     requestAnimationFrame(() => {
       try {
         const context = canvas.getContext("2d");
-        context.fillStyle = "#dddddd";
+        context.fillStyle = "#edf0ed";
         context.fillRect(0, 0, 256, 256);
         if (countries) {
           const worldSize = 256 * 2 ** coords.z;
@@ -126,10 +143,10 @@ const BaseMapLayer = L.GridLayer.extend({
           const path = geoPath(projection, context);
           context.beginPath();
           path(countries);
-          context.fillStyle = "#f7f7f3";
+          context.fillStyle = "#e0e4e2";
           context.fill();
-          context.strokeStyle = "#b3bfbc";
-          context.lineWidth = .7;
+          context.strokeStyle = "#b9c3ba";
+          context.lineWidth = .65;
           context.stroke();
         }
         done(null, canvas);
@@ -185,7 +202,7 @@ function render() {
   const label = `${formatTime(times[selected])} UTC`;
   element("valid").textContent = label;
   element("map-date").textContent = label;
-  updateTimelineSteps();
+  updateTimelineSelection();
   const thisLayer = new ProbabilityLayer({
     opacity: Number(element("opacity").value) / 100, maxZoom: 10,
     bounds: [[-85.051129, -180], [85.051129, 180]], keepBuffer: 0,
@@ -199,7 +216,7 @@ function render() {
     status("Forecast data could not be loaded. Check the connection and use Settings & info to retry.", true);
   });
   thisLayer.on("load", () => {
-    if (layer === thisLayer && !failed) status("Forecast ready. Select a map cell to inspect its time series.");
+    if (layer === thisLayer && !failed) status("Forecast ready.");
   });
   layer = thisLayer;
   status("Loading forecast data...", false, true);
@@ -379,6 +396,7 @@ element("play").addEventListener("click", () => {
   render();
   element("play").textContent = "Pause forecast";
   element("play").setAttribute("aria-label", "Pause forecast");
+  element("play").title = "Pause forecast steps";
   element("play").classList.add("playing");
   timer = setInterval(() => { if (!layer?.isLoading()) advance(1); }, 1400);
 });
@@ -397,5 +415,4 @@ element("older").addEventListener("click", async () => {
 });
 element("source").value = import.meta.env.VITE_ZARR_URL || DEFAULT_SOURCE;
 element("source-form").addEventListener("submit", event => { event.preventDefault(); initialize(); });
-if (matchMedia("(max-width: 640px)").matches) element("legend").open = false;
 initialize();
