@@ -105,20 +105,20 @@ reintroduce legacy Helm deployment when refreshing template workflows.
    The workflow obtains the base path from Pages configuration, so assets and
    worker modules also work beneath the project path or a configured domain.
 
-The page reads the public GitHub-hosted Zarr archive directly; it does not
-upload or copy the archive. Its metadata matches the viewer's Zarr v2 schema,
-and GitHub allows public cross-origin requests. No token or other credential
-is needed:
+The page reads the public Copernicus Climate Data Store Zarr archive directly;
+it does not upload or copy the archive. The browser fetches only metadata and
+the chunks needed for the selected forecast. The source must allow public
+cross-origin requests; no token or other credential is included:
 
 ```
-https://raw.githubusercontent.com/enyfeo/raw_pof_data/main/pof.zarr
+https://cemsdata.copernicus-climate.eu/fire_front_radar/pof.zarr
 ```
 
 The browser fetches metadata and only the forecast chunks needed for the
 selected view:
 
 ```sh
-curl -i 'https://raw.githubusercontent.com/enyfeo/raw_pof_data/main/pof.zarr/.zmetadata'
+curl -i 'https://cemsdata.copernicus-climate.eu/fire_front_radar/pof.zarr/.zmetadata'
 ```
 
 To use another public HTTPS source, set the Actions variable `POF_ZARR_URL` or
@@ -165,7 +165,7 @@ PAGES_BASE_PATH=/pyroscope/ npm run preview
 ```
 
 `VITE_ZARR_URL` sets the build's default source. Leave it unset to use the
-GitHub-hosted archive above. Forecasts are not downloaded during the build.
+Copernicus archive above. Forecasts are not downloaded during the build.
 
 ## Performance and data contract
 
@@ -237,7 +237,7 @@ they are **not deployed to Pages** and are not required by the direct reader.
 python -m venv .venv
 . .venv/bin/activate
 pip install -e '.[test]'
-export POF_ZARR_URL=http://cemsdata.data.compute.cci2.ecmwf.int/fire_front_radar/pof.zarr
+export POF_ZARR_URL=https://cemsdata.copernicus-climate.eu/fire_front_radar/pof.zarr
 uvicorn pof_explorer.app:app --host 127.0.0.1 --port 8000
 pytest -q
 ```

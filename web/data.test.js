@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { after, before, test } from "node:test";
-import { Dataset, color, decodeTime, nearest, probability, sourceURL } from "./data.js";
+import { DEFAULT_SOURCE, Dataset, color, decodeTime, nearest, probability, sourceURL } from "./data.js";
 import { makeFixture } from "../tests/zarr-fixture.js";
 
 let fixture, server, url;
@@ -20,6 +20,7 @@ before(async () => {
 after(() => server.close());
 
 test("HTTPS enforcement and source URL validation", () => {
+  assert.equal(DEFAULT_SOURCE, "https://cemsdata.copernicus-climate.eu/fire_front_radar/pof.zarr");
   assert.throws(() => sourceURL("http://example.org/pof.zarr"), /HTTPS/);
   assert.throws(() => sourceURL("https://user:pass@example.org/pof.zarr"), /credentials/);
   assert.throws(() => sourceURL("file:///pof.zarr"), /HTTP/);
