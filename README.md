@@ -195,12 +195,19 @@ Clicking the map opens a time-series chart of the nearest grid cell's
 probability at every forecast time in the selected run. The chart reads the
 spatial chunk containing that cell for each forecast step (about 1.6 MB
 uncompressed per step); already cached chunks are reused. Its y-axis scales to
-the plotted values, and missing values appear as gaps.
+the plotted values, the bars use the same probability colours as the map
+legend, and missing values appear as gaps.
 
 Web Mercator displays approximately +/-85.05 degrees. Grid-cell probabilities
 are not changed by reprojection. Dates and units remain visible during playback.
 
 ## Scientific interpretation and design
+
+The default Probability of Fire (PoF) forecast is based on
+[ECMWF Open Data](https://www.ecmwf.int/en/forecasts/datasets/open-data), which is
+free to use under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+This credit describes the ECMWF inputs, not the license of the derived PoF
+archive or of an alternate data source.
 
 PoF estimates the daily probability of at least one MODIS active-fire detection
 within an approximately 9 x 9 km grid cell, as a proxy for fire occurrence.
@@ -219,8 +226,8 @@ palette has 16 equal bands from 0% to 2%: grey below 0.125%, yellow from
 to below 1.75%, and black at 1.75% and above (including values above 2%).
 This is a numeric colour scale, **not an alert classification**. Transparent
 means no data. The optional Python backend retains its original colour scale.
-No official logo is recreated; approved logo assets are still needed. The
-supplied PDFs are not published.
+Both viewers display the supplied Sparky logo alongside the data credit.
+The supplied PDFs are not published.
 
 Leaflet, Work Sans Latin fonts, and a Natural Earth 1:110m basemap are bundled
 and self-hosted. There are no third-party map/font requests. The browser does
@@ -232,6 +239,7 @@ geography is public domain, converted from world-atlas 2.0.2.
 
 The original backend and its frontend are retained as a separate local option;
 they are **not deployed to Pages** and are not required by the direct reader.
+The backend is built with open-source Python tools including xarray, Dask, and Zarr.
 
 ```sh
 python -m venv .venv

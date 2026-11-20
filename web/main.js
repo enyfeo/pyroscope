@@ -4,7 +4,7 @@ import "../pof_explorer/static/style.css";
 import "./style.css";
 import { geoMercator, geoPath } from "d3-geo";
 import geography from "../pof_explorer/static/countries.geojson?url";
-import { DEFAULT_SOURCE, sourceURL } from "./data.js";
+import { DEFAULT_SOURCE, color, sourceURL } from "./data.js";
 
 const L = window.L;
 const element = id => document.getElementById(id);
@@ -305,7 +305,9 @@ function seriesChart(series, validTimes, selected) {
   const peak = Math.max(...values.filter(value => value !== null), .0001);
   const magnitude = 10 ** Math.floor(Math.log10(peak));
   const maximum = [1, 2, 5, 10].map(factor => factor * magnitude).find(limit => limit >= peak);
-  const x = index => left + (values.length > 1 ? index / (values.length - 1) : .5) * (width - left - right);
+  const spacing = (width - left - right) / values.length;
+  const barWidth = Math.min(20, spacing * .65);
+  const x = index => left + (index + .5) * spacing;
   const y = value => top + (1 - value / maximum) * (height - top - bottom);
   const chart = svg("svg", { viewBox: `0 0 ${width} ${height}`, class: "series-chart", role: "img",
     "aria-label": `Daily probability of fire at each forecast time: ${values.map((value, index) =>
@@ -318,6 +320,17 @@ function seriesChart(series, validTimes, selected) {
     const anchor = values.length > 1 && index === 0 ? "start" : index === values.length - 1 && index ? "end" : "middle";
     chart.append(svg("text", { x: x(index), y: height - 8, "text-anchor": anchor }, shortDate(validTimes[index])));
   }
+  const rgba = new Uint8ClampedArray(4);
+  const fills = values.map(value => {
+    if (value === null) return null;
+    color(value, rgba, 0);
+    return `rgb(${rgba[0]}, ${rgba[1]}, ${rgba[2]})`;
+  });
+  values.forEach((value, index) => {
+    if (value === null || value === 0) return;
+    chart.append(svg("rect", { x: x(index) - barWidth / 2, y: y(value), width: barWidth,
+      height: y(0) - y(value), fill: fills[index] }));
+  });
   chart.append(svg("line", { x1: x(selected), x2: x(selected), y1: top, y2: height - bottom, class: "selected" }));
   let path = "";
   values.forEach((value, index) => {
@@ -327,7 +340,7 @@ function seriesChart(series, validTimes, selected) {
   chart.append(svg("path", { d: path, class: "series" }));
   values.forEach((value, index) => {
     if (value === null) return;
-    const dot = svg("circle", { cx: x(index), cy: y(value), r: index === selected ? 4.5 : 3, class: "point" });
+    const dot = svg("circle", { cx: x(index), cy: y(value), r: index === selected ? 4.5 : 3, class: "point", fill: fills[index] });
     dot.append(svg("title", {}, `${formatTime(validTimes[index])} UTC: ${percent(value)}`));
     chart.append(dot);
   });
@@ -357,7 +370,7 @@ map.on("click", async event => {
     } else {
       content.append(seriesChart(series, validTimes, selected));
       const note = document.createElement("p");
-      note.textContent = "Forecast evolution for the selected run. Gaps indicate no data.";
+      note.textContent = "Bar colours match the map legend. Gaps indicate no data.";
       content.append(note);
     }
     popup.setContent(content);

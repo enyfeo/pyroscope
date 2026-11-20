@@ -106,6 +106,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 .utility-panel #about h3 { margin: 0 0 7px; font-size: 14px; font-weight: 600; }
 .utility-panel #about p { margin: 7px 0; }
 .utility-panel #about a { font-size: 12px; }
+.sparky-logo { display: block; width: 220px; max-width: 100%; height: auto; }
 .map-area { position: relative; flex: 1 1 auto; min-width: 0; min-height: 0; background: var(--color-paper); }
 #map { width: 100%; height: 100%; }
 .map-caption, .legend, .timeline {

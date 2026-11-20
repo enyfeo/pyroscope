@@ -38,13 +38,16 @@
             <p>Not ignition probability, burned area, or intensity. Low probabilities do not mean no fire risk. Skill varies by region and lead time; the paper finds useful skill up to 10 days, with longer skill in some regions.</p>
             <a href="https://doi.org/10.1029/2023GL107929" target="_blank" rel="noopener noreferrer">McNorton et al. (2024)</a>
             <p>Research information, not an emergency warning service. Follow local authorities for safety advice.</p>
+            <h3>Data credit</h3>
+            <img class="sparky-logo" src="./pof_explorer/static/sparky-logo.png" width="1000" height="363" alt="Sparky: The ECMWF Fire Model">
+            <p>The default Probability of Fire forecast is based on <a href="https://www.ecmwf.int/en/forecasts/datasets/open-data">ECMWF Open Data</a>, which is free to use under <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Pyroscope's optional backend is built with open-source Python tools including xarray, Dask, and Zarr.</p>
           </section>
         </div>
       </details>
     </header>
     <section class="map-area" aria-label="Probability of fire map">
       <div id="map"></div>
-      <div class="map-caption"><span class="dot"></span> MODEL_FIRE <span id="map-date"></span></div>
+      <div class="map-caption"><span class="dot"></span><span>PoF powered by ECMWF open data</span> <span id="map-date"></span></div>
       <p id="map-status" role="status" aria-live="polite" class="map-status loading"><span class="status-spinner" aria-hidden="true"></span><span id="map-status-text">Connecting to forecast data...</span></p>
       <section class="timeline" aria-label="Forecast timeline">
         <div class="timeline-heading">

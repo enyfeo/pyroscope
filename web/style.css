@@ -8,5 +8,5 @@
 .series-chart text { font-size: 9px; fill: var(--color-muted); }
 .series-chart .grid { stroke: var(--color-border); }
 .series-chart .selected { stroke: var(--color-amber); stroke-dasharray: 3 3; }
-.series-chart .series { fill: none; stroke: var(--color-burnt); stroke-width: 2; }
-.series-chart .point { fill: var(--color-burnt); stroke: var(--color-white); stroke-width: 1; }
+.series-chart .series { fill: none; stroke: var(--color-navy); stroke-width: 2; }
+.series-chart .point { stroke: var(--color-navy); stroke-width: 1; }
